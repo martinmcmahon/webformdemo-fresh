@@ -28,11 +28,13 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install API Dependencies
         run: cd api && npm ci
-      - name: Prepare API Functions
+      - name: Validate API Structure
         run: |
           cd api
-          echo "Functions app structure validated"
-          # Ensure no build step interferes
+          if [ ! -f "SubmitComplaint.js" ] || [ ! -f "function.json" ]; then
+            echo "Missing required function files"
+            exit 1
+          fi
           cd ..
       - name: Build And Deploy
         id: builddeploy
@@ -45,5 +47,3 @@ jobs:
           api_location: "api"
           output_location: "build"
           app_build_command: "npm run build"
-          # Optional: Force API build
-          api_build_command: "echo Skipping API build, using raw files"
