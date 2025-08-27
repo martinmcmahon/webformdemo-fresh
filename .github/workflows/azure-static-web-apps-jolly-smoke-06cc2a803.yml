@@ -31,10 +31,12 @@ jobs:
       - name: Validate API Structure
         run: |
           cd api
+          ls -la
           if [ ! -f "SubmitComplaint.js" ] || [ ! -f "function.json" ]; then
-            echo "Missing required function files"
+            echo "Error: Missing required function files"
             exit 1
           fi
+          echo "API files validated: $(ls -la)"
           cd ..
       - name: Build And Deploy
         id: builddeploy
