@@ -20,8 +20,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
+      - name: Set up Node.js for API
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
       - name: Install API Dependencies
-        run: cd api && npm install
+        run: cd api && npm ci
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
