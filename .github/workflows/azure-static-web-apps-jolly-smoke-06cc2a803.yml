@@ -32,11 +32,11 @@ jobs:
         run: |
           cd api
           ls -la
-          if [ ! -f "SubmitComplaint.js" ] || [ ! -f "function.json" ]; then
-            echo "Error: Missing required function files"
+          if [ ! -d "SubmitComplaint" ] || [ ! -f "SubmitComplaint/SubmitComplaint.js" ] || [ ! -f "SubmitComplaint/function.json" ]; then
+            echo "Error: Missing required function files or directory"
             exit 1
           fi
-          echo "API files validated: $(ls -la)"
+          echo "API files validated: $(ls -la SubmitComplaint)"
           cd ..
       - name: Build And Deploy
         id: builddeploy
