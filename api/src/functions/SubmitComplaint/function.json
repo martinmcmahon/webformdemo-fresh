@@ -6,7 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["post"],
-      "route": "submitComplaint"
+      "route": "api/submitComplaint"
     },
     {
       "type": "http",
