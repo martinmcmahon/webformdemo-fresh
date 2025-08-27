@@ -8,7 +8,6 @@ on:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
-run-name: prod
 env: 
   SERVICE_BUS_CONNECTION_STRING: ${{ secrets.SERVICE_BUS_CONNECTION_STRING }}
 
