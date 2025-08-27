@@ -38,6 +38,10 @@ jobs:
           fi
           echo "API files validated: $(ls -la SubmitComplaint)"
           cd ..
+      - name: Debug Environment Variables
+        run: |
+          echo "SERVICE_BUS_CONNECTION_STRING from env: ${SERVICE_BUS_CONNECTION_STRING}" >> $GITHUB_ENV
+          echo "SERVICE_BUS_CONNECTION_STRING from secrets: ${{ secrets.SERVICE_BUS_CONNECTION_STRING }}" >> $GITHUB_STEP_SUMMARY
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
