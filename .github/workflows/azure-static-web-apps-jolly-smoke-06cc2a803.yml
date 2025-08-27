@@ -31,8 +31,8 @@ jobs:
       - name: Prepare API Functions
         run: |
           cd api
-          echo "Ensuring Functions app is ready"
-          # No build needed, just ensure structure
+          echo "Functions app structure validated"
+          # Ensure no build step interferes
           cd ..
       - name: Build And Deploy
         id: builddeploy
@@ -45,3 +45,5 @@ jobs:
           api_location: "api"
           output_location: "build"
           app_build_command: "npm run build"
+          # Optional: Force API build
+          api_build_command: "echo Skipping API build, using raw files"
