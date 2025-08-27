@@ -28,6 +28,11 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - name: Install API Dependencies
         run: cd api && npm ci
+      - name: Build API
+        run: |
+          cd api
+          npm run build  # Note: Functions doesn't require a build, but this ensures dependencies are ready
+          cd ..
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
