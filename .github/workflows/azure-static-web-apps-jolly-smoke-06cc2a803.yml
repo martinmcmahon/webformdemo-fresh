@@ -53,3 +53,5 @@ jobs:
           api_location: "api"
           output_location: "build"
           app_build_command: "npm run build"
+          azure_functions_environment_variables: |
+            AzureWebJobsServiceBusConnectionString=${{ secrets.SERVICE_BUS_CONNECTION_STRING }}
