@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  SERVICE_BUS_CONNECTION_STRING: ${{ secrets.SERVICE_BUS_CONNECTION_STRING }}
+  CUSTOM_SERVICE_BUS_CONNECTION: ${{ secrets.SERVICE_BUS_CONNECTION_STRING }}
 
 jobs:
   build_and_deploy_job:
@@ -40,8 +40,8 @@ jobs:
           cd ..
       - name: Debug Environment Variables
         run: |
-          echo "Service Bus Connection String from env: $SERVICE_BUS_CONNECTION_STRING" >> $GITHUB_ENV
-          echo "Service Bus Connection String from secrets: $SERVICE_BUS_CONNECTION_STRING" >> $GITHUB_STEP_SUMMARY
+          echo "Custom Service Bus Connection from env: $CUSTOM_SERVICE_BUS_CONNECTION" >> $GITHUB_ENV
+          echo "Custom Service Bus Connection from secrets: $CUSTOM_SERVICE_BUS_CONNECTION" >> $GITHUB_STEP_SUMMARY
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -53,4 +53,4 @@ jobs:
           api_location: "api"
           output_location: "build"
           app_build_command: "npm run build"
-          azure_functions_environment_variables: '{"AzureWebJobsServiceBusConnectionString": "${{ secrets.SERVICE_BUS_CONNECTION_STRING }}"}'
+          azure_functions_environment_variables: '{"CUSTOM_SERVICE_BUS_CONNECTION": "${{ secrets.SERVICE_BUS_CONNECTION_STRING }}"}'
