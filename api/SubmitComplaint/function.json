@@ -1,4 +1,5 @@
 {
+  "scriptFile": "SubmitComplaint.js",
   "bindings": [
     {
       "authLevel": "anonymous",
