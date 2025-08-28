@@ -1,7 +1,7 @@
 module.exports = async function (context, req) {
   context.log('Function triggered for /api/submitComplaint');
 
-  const connectionString = process.env.SERVICE_BUS_CONNECTION_STRING;
+  const connectionString = process.env.AzureWebJobsServiceBusConnectionString;
   context.log(`Service Bus connection string: ${connectionString ? 'Found' : 'Not found'}`);
   if (!connectionString) {
     context.log('Error: Service Bus connection string is missing');
