@@ -40,8 +40,8 @@ jobs:
           cd ..
       - name: Debug Environment Variables
         run: |
-          echo "Service Bus Connection String from env: ${SERVICE_BUS_CONNECTION_STRING}" >> $GITHUB_ENV
-          echo "Service Bus Connection String from secrets: ${{ secrets.SERVICE_BUS_CONNECTION_STRING }}" >> $GITHUB_STEP_SUMMARY
+          echo "Service Bus Connection String from env: $SERVICE_BUS_CONNECTION_STRING" >> $GITHUB_ENV
+          echo "Service Bus Connection String from secrets: $SERVICE_BUS_CONNECTION_STRING" >> $GITHUB_STEP_SUMMARY
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
