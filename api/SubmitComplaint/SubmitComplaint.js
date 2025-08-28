@@ -2,6 +2,7 @@ module.exports = async function (context, req) {
   context.log('Function triggered for /api/submitComplaint');
 
   const connectionString = process.env.CUSTOM_SERVICE_BUS_CONNECTION;
+  context.log('HAS_CUSTOM_SERVICE_BUS_CONNECTION', !!process.env.CUSTOM_SERVICE_BUS_CONNECTION);
   context.log(`Service Bus connection string: ${connectionString ? 'Found' : 'Not found'}`);
   if (!connectionString) {
     context.log('Error: Service Bus connection string is missing');
