@@ -1,17 +1,9 @@
-// PROBE 1: test require()
+// PROBE 2: check env var is visible at runtime
 module.exports = async function (context, req) {
-  try {
-    const sb = require('@azure/service-bus');           // <-- just require
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain' },
-      body: 'require-ok keys=' + Object.keys(sb).join(',')
-    };
-  } catch (e) {
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain' },
-      body: 'require-failed: ' + (e.code || e.name) + ': ' + e.message
-    };
-  }
+  const hasConn = !!process.env.CUSTOM_SERVICE_BUS_CONNECTION;
+  context.res = {
+    status: 200,
+    headers: { 'Content-Type': 'text/plain' },
+    body: 'env CUSTOM_SERVICE_BUS_CONNECTION = ' + hasConn
+  };
 };
