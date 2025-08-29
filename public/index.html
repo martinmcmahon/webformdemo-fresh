@@ -90,12 +90,12 @@
 
     try {
       const response = await fetch('/api/submitComplaint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name, complaintDetails })
+});
+const text = await response.text();
+alert(response.ok ? 'Complaint submitted successfully!' : `Failed to submit: ${text}`);
 
       if (response.ok) {
         alert('Complaint submitted successfully!');
