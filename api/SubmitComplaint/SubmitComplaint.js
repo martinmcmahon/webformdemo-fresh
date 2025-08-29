@@ -1,35 +1,30 @@
-// Send to Azure Service Bus via REST (HTTPS) to avoid AMQP/WSS issues
+// api/submitComplaint/SubmitComplaint.js
 const crypto = require('crypto');
 const qs = require('querystring');
+const https = require('https');
 
 function parseConn(cs) {
-  // cs: "Endpoint=sb://<ns>.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=..."
-  const parts = Object.fromEntries(cs.split(';').filter(Boolean).map(kv => {
-    const [k, v] = kv.split('=');
-    return [k, v];
-  }));
+  const parts = Object.fromEntries(
+    cs.split(';').filter(Boolean).map(kv => {
+      const idx = kv.indexOf('=');
+      return [kv.slice(0, idx), kv.slice(idx + 1)];
+    })
+  );
   const endpoint = (parts.Endpoint || '').replace(/^sb:/, 'https:').replace(/\/+$/, '/'); // https://<ns>.servicebus.windows.net/
-  const namespaceHost = endpoint.replace(/^https:\/\/|\/$/g, ''); // <ns>.servicebus.windows.net
-  return {
-    endpoint,                     // https://<ns>.servicebus.windows.net/
-    host: namespaceHost,          // <ns>.servicebus.windows.net
-    keyName: parts.SharedAccessKeyName,
-    key: parts.SharedAccessKey
-  };
+  return { endpoint, keyName: parts.SharedAccessKeyName, key: parts.SharedAccessKey };
 }
 
-function buildSas({ resourceUri, keyName, key, ttlSeconds = 300 }) {
+function buildSas(resourceUri, keyName, key, ttlSeconds = 300) {
   const se = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const sr = encodeURIComponent(resourceUri.toLowerCase());
+  const sr = encodeURIComponent(resourceUri); // <-- NO lowercasing
   const toSign = `${sr}\n${se}`;
   const sig = crypto.createHmac('sha256', key).update(toSign, 'utf8').digest('base64');
-  const token = `SharedAccessSignature sr=${sr}&sig=${encodeURIComponent(sig)}&se=${se}&skn=${encodeURIComponent(keyName)}`;
-  return token;
+  return `SharedAccessSignature sr=${sr}&sig=${encodeURIComponent(sig)}&se=${se}&skn=${encodeURIComponent(keyName)}`;
 }
 
 module.exports = async function (context, req) {
   try {
-    // ---- Parse body (supports JSON or x-www-form-urlencoded) ----
+    // ---- Parse body (JSON or x-www-form-urlencoded) ----
     const ct = ((req?.headers?.['content-type'] || req?.headers?.['Content-Type']) || '').toLowerCase();
     let body = req?.body || {};
     if (typeof body === 'string') {
@@ -46,26 +41,24 @@ module.exports = async function (context, req) {
 
     const connStr = process.env.CUSTOM_SERVICE_BUS_CONNECTION;
     if (!connStr) {
-      context.res = { status: 500, headers: { 'Content-Type': 'text/plain' },
-        body: 'Service Bus connection string is not configured.' };
+      context.res = { status: 500, headers: { 'Content-Type': 'text/plain' }, body: 'Service Bus connection string is not configured.' };
       return;
     }
 
     const { endpoint, keyName, key } = parseConn(connStr);
-    const queueName = process.env.SB_QUEUE || 'complaintsqueue'; // or set SB_QUEUE in SWA env vars
-    const resourceUri = `${endpoint}${queueName}`.replace(/\/+$/, '');  // https://<ns>.servicebus.windows.net/<queue>
-    const sas = buildSas({ resourceUri, keyName, key, ttlSeconds: 300 });
+    const queueName = process.env.SB_QUEUE || 'complaintsqueue';
 
-    // ---- Send via REST: POST https://<ns>.servicebus.windows.net/<queue>/messages ----
+    // IMPORTANT: sign THE EXACT resource we will call (queue + /messages), no lowercasing
+    const resourceUri = `${endpoint}${queueName}/messages`;              // e.g. https://ns.servicebus.windows.net/queue/messages
+    const sas = buildSas(resourceUri, keyName, key, 300);
+
     const payload = JSON.stringify({ name, complaintDetails, timestamp: new Date().toISOString() });
 
-    // Native https to avoid extra deps
-    const https = require('https');
-    const url = new URL(`${resourceUri}/messages`);
+    const url = new URL(resourceUri);
     const options = {
       method: 'POST',
       hostname: url.hostname,
-      path: url.pathname,
+      path: url.pathname, // "/queue/messages"
       headers: {
         'Authorization': sas,
         'Content-Type': 'application/json',
@@ -89,12 +82,9 @@ module.exports = async function (context, req) {
     if (result.status === 201) {
       context.res = { status: 200, headers: { 'Content-Type': 'text/plain' }, body: 'Complaint submitted successfully!' };
     } else {
-      // Surface exact reason (401 Unauthorized, 404 Not Found, 403 Forbidden, etc.)
-      context.res = { status: 500, headers: { 'Content-Type': 'text/plain' },
-        body: `REST send failed: ${result.status} ${result.body || ''}` };
+      context.res = { status: 500, headers: { 'Content-Type': 'text/plain' }, body: `REST send failed: ${result.status} ${result.body || ''}` };
     }
   } catch (outer) {
-    context.res = { status: 500, headers: { 'Content-Type': 'text/plain' },
-      body: `Unhandled: ${outer.name}: ${outer.message}` };
+    context.res = { status: 500, headers: { 'Content-Type': 'text/plain' }, body: `Unhandled: ${outer.name}: ${outer.message}` };
   }
 };
