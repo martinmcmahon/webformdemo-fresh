@@ -1,61 +1,71 @@
-// api/submitComplaint/SubmitComplaint.js
+// TEMP DEBUG VERSION: always returns 200 so we can see the real error text
 module.exports = async function (context, req) {
+  const progress = [];
+  const say = (text) => {
+    context.res = {
+      status: 200, // <— forces SWA to show our body instead of "Backend call failure"
+      headers: { 'Content-Type': 'text/plain' },
+      body: text + '\n\nprogress: ' + progress.join(' > ')
+    };
+  };
+
   try {
-    // ---- Parse body (works for JSON and form-POST) ----
-    var ct = '';
-    if (req && req.headers) ct = (req.headers['content-type'] || req.headers['Content-Type'] || '').toLowerCase();
+    progress.push('start');
 
-    var body = (req && req.body) ? req.body : {};
+    // ---- parse body (JSON or form) ----
+    const ct = ((req?.headers?.['content-type'] || req?.headers?.['Content-Type']) || '').toLowerCase();
+    let body = req?.body || {};
     if (typeof body === 'string') {
-      if (ct.indexOf('application/json') > -1) {
-        try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }
-      } else if (ct.indexOf('application/x-www-form-urlencoded') > -1) {
-        body = require('querystring').parse(body);
-      }
+      if (ct.includes('application/json')) { try { body = JSON.parse(body || '{}'); } catch {} }
+      else if (ct.includes('application/x-www-form-urlencoded')) { body = require('querystring').parse(body); }
     }
+    progress.push('parsed');
 
-    var name = ((body && body.name) || (body && body['applicant-name']) || '').toString().trim();
-    var complaintDetails = ((body && body.complaintDetails) || (body && body['complaint-details']) || '').toString().trim();
+    const name = (body.name ?? body['applicant-name'] ?? '').toString().trim();
+    const complaintDetails = (body.complaintDetails ?? body['complaint-details'] ?? '').toString().trim();
+    if (!name || !complaintDetails) return say('ERR: missing fields. keys=' + Object.keys(body).join(', '));
+    progress.push('validated');
 
-    if (!name || !complaintDetails) {
-      context.res = { status: 400, headers: {'Content-Type':'text/plain'}, body: 'Missing required fields: name, complaintDetails.' };
-      return;
-    }
+    // ---- env var ----
+    const conn = process.env.CUSTOM_SERVICE_BUS_CONNECTION;
+    if (!conn) return say('ERR: CUSTOM_SERVICE_BUS_CONNECTION is not configured');
+    progress.push('env-ok');
 
-    // ---- Env var ----
-    var conn = process.env.CUSTOM_SERVICE_BUS_CONNECTION;
-    if (!conn) {
-      context.res = { status: 500, headers: {'Content-Type':'text/plain'}, body: 'Service Bus connection string is not configured.' };
-      return;
-    }
-
-    // ---- Service Bus send (fully wrapped) ----
+    // ---- require service-bus ----
+    let sb, ServiceBusClient;
     try {
-      var sb = require('@azure/service-bus');                            // catches if module missing
-      var sbClient = new sb.ServiceBusClient(conn);
-      var sender = sbClient.createSender(process.env.SB_QUEUE || 'complaintsqueue');
-
-      await sender.sendMessages({
-        body: { name: name, complaintDetails: complaintDetails, timestamp: new Date().toISOString() }
-      });
-
-      try { await sender.close(); } catch (e) {}
-      try { await sbClient.close(); } catch (e) {}
-
-      context.res = { status: 200, headers: {'Content-Type':'text/plain'}, body: 'Complaint submitted successfully!' };
+      sb = require('@azure/service-bus');
+      ServiceBusClient = sb.ServiceBusClient;
+      progress.push('require-sb-ok(keys=' + Object.keys(sb).join(',') + ')');
     } catch (e) {
-      var msg = (e && (e.code || e.name)) ? (e.code || e.name) + ': ' + e.message
-                                           : (e && e.message) ? e.message : 'Unknown error';
-      if (e && (e.code === 'MODULE_NOT_FOUND' || /Cannot find module/i.test(msg))) {
-        context.res = { status: 500, headers: {'Content-Type':'text/plain'},
-          body: 'Missing dependency @azure/service-bus. Add it to api/package.json and redeploy.' };
-      } else {
-        context.res = { status: 500, headers: {'Content-Type':'text/plain'},
-          body: 'Failed to send to Service Bus: ' + msg };
-      }
+      return say('ERR: cannot require @azure/service-bus -> ' + (e.code || e.name) + ': ' + e.message);
     }
+
+    // ---- construct client/sender ----
+    let sbClient, sender;
+    try {
+      sbClient = new ServiceBusClient(conn);
+      progress.push('client-ok');
+      sender = sbClient.createSender(process.env.SB_QUEUE || 'complaintsqueue');
+      progress.push('sender-ok');
+    } catch (e) {
+      return say('ERR: constructing client/sender -> ' + (e.code || e.name) + ': ' + e.message);
+    }
+
+    // ---- send ----
+    try {
+      await sender.sendMessages({ body: { name, complaintDetails, timestamp: new Date().toISOString() } });
+      progress.push('sent');
+    } catch (e) {
+      return say('ERR: sendMessages -> ' + (e.code || e.name) + ': ' + e.message);
+    } finally {
+      try { await sender?.close(); } catch {}
+      try { await sbClient?.close(); } catch {}
+      progress.push('closed');
+    }
+
+    return say('OK: Complaint submitted successfully!');
   } catch (outer) {
-    // absolute last resort
-    context.res = { status: 500, headers: {'Content-Type':'text/plain'}, body: 'Unhandled error: ' + outer.message };
+    return say('ERR: unhandled -> ' + (outer.code || outer.name) + ': ' + outer.message);
   }
 };
