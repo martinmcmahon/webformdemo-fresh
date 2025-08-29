@@ -75,37 +75,43 @@
 
   <!-- JS -->
   <script src="assets/govuk-frontend-5.11.1.min.js" defer></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      try { window.GOVUKFrontend?.initAll(); } catch (e) { console.warn('GOVUK init failed:', e); }
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    try { window.GOVUKFrontend?.initAll(); } catch(e) { console.warn('GOVUK init failed:', e); }
 
-      const form = document.getElementById('complaintForm');
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    const form = document.getElementById('complaintForm') || document.querySelector('form');
+    form.removeAttribute('action'); // ensure no native navigation
+    form.removeAttribute('method');
 
-        const name = document.getElementById('applicant-name').value;
-        const complaintDetails = document.getElementById('complaint-details').value;
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-        try {
-          const res = await fetch('/api/submitComplaint', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, complaintDetails })
-          });
+      const name = document.getElementById('applicant-name').value;
+      const complaintDetails = document.getElementById('complaint-details').value;
 
-          const text = await res.text();
-          if (res.ok) {
-            alert('Complaint submitted successfully!');
-            document.getElementById('applicant-name').value = '';
-            document.getElementById('complaint-details').value = '';
-          } else {
-            alert(`Failed to submit: ${text}`);
-          }
-        } catch (err) {
-          alert('Network error: ' + err.message);
+      try {
+        const res = await fetch('/api/submitComplaint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, complaintDetails })
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        const text = await res.text();
+
+        // show exactly what the backend returned
+        alert(`Status: ${res.status} ${res.statusText}\nCT: ${contentType}\n\n${text}`);
+
+        if (res.ok) {
+          document.getElementById('applicant-name').value = '';
+          document.getElementById('complaint-details').value = '';
         }
-      });
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>
