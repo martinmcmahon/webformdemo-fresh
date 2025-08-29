@@ -1,5 +1,10 @@
 module.exports = async function (context, req) {
   context.log('Function triggered for /api/submitComplaint');
+// add:
+const ct = ((req.headers && (req.headers['content-type'] || req.headers['Content-Type'])) || '').toLowerCase();
+context.log('Content-Type:', ct, '| typeof req.body:', typeof req.body);
+context.log('Body keys:', req && req.body && typeof req.body === 'object' ? Object.keys(req.body) : 'n/a');
+
 
   const connectionString = process.env.CUSTOM_SERVICE_BUS_CONNECTION;
   context.log('HAS_CUSTOM_SERVICE_BUS_CONNECTION', !!process.env.CUSTOM_SERVICE_BUS_CONNECTION);
