@@ -30,6 +30,9 @@
           <h1 class="govuk-heading-l">Complaints Form</h1>
 
           <!-- No action/method: JS controls submission -->
+<!-- Inline status messages land here -->
+<div id="submit-status" class="govuk-!-margin-bottom-6" aria-live="polite"></div>
+
           <form id="complaintForm" autocomplete="off" novalidate spellcheck="false">
             <div id="applicant-name-group" class="govuk-form-group">
               <label for="applicant-name" class="govuk-label">Full name</label>
@@ -74,44 +77,84 @@
   </footer>
 
   <!-- JS -->
-  <script src="assets/govuk-frontend-5.11.1.min.js" defer></script>
+ <script src="assets/govuk-frontend-5.11.1.min.js" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    try { window.GOVUKFrontend?.initAll(); } catch(e) { console.warn('GOVUK init failed:', e); }
+    try { window.GOVUKFrontend?.initAll(); } catch {}
 
     const form = document.getElementById('complaintForm') || document.querySelector('form');
-    form.removeAttribute('action'); // ensure no native navigation
+    const nameEl = document.getElementById('applicant-name');
+    const detailsEl = document.getElementById('complaint-details');
+    const statusEl = document.getElementById('submit-status');
+
+    // prevent native navigation
+    form.removeAttribute('action');
     form.removeAttribute('method');
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
+    function renderSuccess(text) {
+      statusEl.innerHTML = `
+        <div class="govuk-notification-banner govuk-notification-banner--success"
+             role="region" aria-labelledby="success-title" data-module="govuk-notification-banner" tabindex="-1">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="success-title">Success</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-body">${text}</p>
+          </div>
+        </div>`;
+      window.GOVUKFrontend?.initAll();
+      statusEl.querySelector('.govuk-notification-banner')?.focus();
+    }
 
-      const name = document.getElementById('applicant-name').value;
-      const complaintDetails = document.getElementById('complaint-details').value;
+    function renderError(text) {
+      statusEl.innerHTML = `
+        <div class="govuk-error-summary" role="alert" aria-labelledby="error-summary-title"
+             data-module="govuk-error-summary" tabindex="-1">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body">${text}</p>
+          </div>
+        </div>`;
+      window.GOVUKFrontend?.initAll();
+      statusEl.querySelector('.govuk-error-summary')?.focus();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // optional: basic client-side required check
+      if (!nameEl.value.trim() || !detailsEl.value.trim()) {
+        renderError('Enter your full name and complaint details.');
+        return;
+      }
+
+      // show a lightweight “submitting…” message
+      statusEl.innerHTML = `<p class="govuk-hint">Submitting…</p>`;
 
       try {
         const res = await fetch('/api/submitComplaint', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, complaintDetails })
+          body: JSON.stringify({
+            name: nameEl.value,
+            complaintDetails: detailsEl.value
+          })
         });
 
-        const contentType = res.headers.get('content-type') || '';
         const text = await res.text();
-
-        // show exactly what the backend returned
-        alert(`Status: ${res.status} ${res.statusText}\nCT: ${contentType}\n\n${text}`);
-
         if (res.ok) {
-          document.getElementById('applicant-name').value = '';
-          document.getElementById('complaint-details').value = '';
+          renderSuccess('Complaint submitted successfully!');
+          form.reset();
+        } else {
+          renderError(text || 'Failed to submit complaint. Please try again.');
         }
       } catch (err) {
-        alert('Network error: ' + err.message);
+        renderError('Network error: ' + err.message);
       }
     });
   });
 </script>
+
 
 </body>
 </html>
