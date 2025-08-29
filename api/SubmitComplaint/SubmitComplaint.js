@@ -18,16 +18,41 @@ context.log('Body keys:', req && req.body && typeof req.body === 'object' ? Obje
     return;
   }
 
-  const { name, complaintDetails } = req.body || {};
-  context.log(`Received request body: ${JSON.stringify(req.body)}`);
-  if (!name || !complaintDetails) {
-    context.log('Error: Missing name or complaintDetails in request body');
-    context.res = {
-      status: 400,
-      body: "Please provide both name and complaint details."
-    };
-    return;
+  //const { name, complaintDetails } = req.body || {};
+  //context.log(`Received request body: ${JSON.stringify(req.body)}`);
+  //if (!name || !complaintDetails) {
+  //  context.log('Error: Missing name or complaintDetails in request body');
+  //  context.res = {
+  //    status: 400,
+  //    body: "Please provide both name and complaint details."
+//    };
+  //  return;
+  //}
+
+let body = req.body || {};
+if (typeof body === 'string') {
+  if (ct.includes('application/json')) {
+    try { body = JSON.parse(body || '{}'); } catch {}
+  } else if (ct.includes('application/x-www-form-urlencoded')) {
+    const qs = require('querystring');
+    body = qs.parse(body);
   }
+}
+
+// accept either JSON keys or your current form field names (native POST)
+const name = (body.name ?? body['applicant-name'] ?? '').toString().trim();
+const complaintDetails = (body.complaintDetails ?? body['complaint-details'] ?? '').toString().trim();
+
+// optional debug (keep for now)
+context.log('CT:', ct, '| keys:', Object.keys(body));
+
+if (!name || !complaintDetails) {
+  context.res = {
+    status: 400,
+    body: `Please provide both name and complaint details. Keys seen: ${Object.keys(body).join(', ')}`
+  };
+  return;
+}
 
   context.log(`Processing submission for name: ${name}, details: ${complaintDetails}`);
   const { ServiceBusClient } = require('@azure/service-bus');
